@@ -1,0 +1,28 @@
+method,
+    bayes_calibration dream
+        chains = 8
+        samples = 100000
+
+model,
+    single
+
+variables,
+    continuous_design = 3
+        lower = 2 * 0. 1e8
+        upper = 246.615 176.333 1.0e11
+        initial_point = 158.0 98.0 3.214e9
+        descriptors 'x' 'y' 'I'
+
+interface,
+    python,
+        numpy
+        analysis_driver = 'gefry2.dakota_interface:respFn'
+        
+responses
+    calibration_terms = 10
+    calibration_data_file = 'obs.dat'
+        freeform
+        num_experiments = 10
+        num_std_deviations = 10
+    no_gradients
+    no_hessians
