@@ -80,7 +80,7 @@ class Problem(object):
         alpha = empty(len(self.detectors))
 
         for (i, r_i) in enumerate(self.r_d):
-            alpha[i] = self.domain(self.source.loc, r_i)
+            alpha[i] = self.domain(source.loc, r_i)
 
         # Mean detector count rate
         I = self.I0 * alpha * omega
