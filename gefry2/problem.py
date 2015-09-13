@@ -2,6 +2,8 @@ from numpy import *
 from shapely.ops import cascaded_union
 from shapely import geometry as g
 
+from collections import Iterable
+
 __all__ = ['Domain', 'Detector', 'Source', 'Problem']
 
 class Domain(object):
@@ -47,8 +49,16 @@ class Problem(object):
     def __init__(self, domain, detectors, source, background):
         self.domain = domain
         self.detectors = detectors
-        self.source = source # Note: only allowing 1
         self.background = background
+
+        # Can pass either one or many sources
+        if isinstance(source, Iterable):
+            self.source = source
+            self._ns = len(self.source)
+        else: # Single source
+            assert isinstance(source, Source) # Just to make sure
+            self.source = [source]
+            self._ns = 1
 
         # Cache values
         self.r_d = array([i.loc for i in self.detectors])
@@ -56,36 +66,52 @@ class Problem(object):
         self.dwell_d = array([i.dwell for i in self.detectors])
         self.epsilon_d = array([i.epsilon for i in self.detectors])
 
-        self.I0 = source.intensity * self.dwell_d * self.epsilon_d / (4 * pi)
+        self._nd = len(self.detectors)
+
+        self.I0 = [
+            i.intensity * self.dwell_d * self.epsilon_d / (4 * pi)
+            for i in self.source
+        ]
 
         # Compute reference response
         self.nominal = self(uncertain=False)
 
     def __call__(self, src_hyp=None, uncertain=True):
+        # Note: this allows for computing the response with a different
+        # number of sources than actual
         if src_hyp is None: # Computing reference values
-            source = self.source
+            sources = self.source
         else:
-            source = src_hyp
+            # Again, check for single source and listify it if needed
+            if isinstance(src_hyp, Iterable):
+                sources = src_hyp
+            else:
+                assert isinstance(src_hyp, Source)
+                sources = [src_hyp]
 
-        # vector and distance to source
-        r = self.r_d - source.loc
-        dr = linalg.norm(r, axis=1)
+        I = zeros(self._nd)
 
-        # Compute fractional solid angle for detectors
-        # 4pi factor already included in I0
-        # Assumes distances >> dimension of detector
-        omega = self.A_d / (dr ** 2.)
+        for s_i, source in enumerate(sources):
+            # vector and distance to source
+            r = self.r_d - source.loc
+            dr = linalg.norm(r, axis=1)
 
-        # Compute attenuation coefficients
-        alpha = empty(len(self.detectors))
+            # Compute fractional solid angle for detectors
+            # 4pi factor already included in I0
+            # Assumes distances >> dimension of detector
+            omega = self.A_d / (dr ** 2.)
 
-        for (i, r_i) in enumerate(self.r_d):
-            alpha[i] = self.domain(source.loc, r_i)
+            alpha = empty(self._nd)
 
-        # Mean detector count rate
-        I = self.I0 * alpha * omega
+            for (i, r_i) in enumerate(self.r_d):
+                alpha[i] = self.domain(source.loc, r_i)
 
-        if uncertain:
-            return random.poisson(I) + random.poisson(self.background)
-        else:
-            return rint(I).astype(int64) + self.background
+            # Mean detector count rate
+            Ip = self.I0[s_i] * alpha * omega
+
+            if uncertain:
+                I += random.poisson(Ip) + random.poisson(self.background)
+            else:
+                I += rint(Ip).astype(int64) + self.background
+
+        return I
