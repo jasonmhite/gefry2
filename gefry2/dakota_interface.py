@@ -3,6 +3,7 @@ import os
 import cPickle as pickle
 
 from gefry2 import Source
+from gefry2.util import chunk_list
 
 try:
     PSPEC = os.environ['GEFRY_PSPEC']
@@ -26,6 +27,28 @@ def respFn(**kwargs):
 
         print('{}: '.format(eid), resp)
 
+        return {'fns': resp, 'failure': 0}
+
+    except:
+        return {'fns': np.zeros(n_resp), 'failure': 1}
+
+def respFnN(**kwargs):
+    try:
+        n_var = kwargs['variables']
+        n_resp = kwargs['functions']
+        eid = kwargs['currEvalId']
+
+        var_list = kwargs['av']
+        assert(len(var_list) % 3 == 0)
+
+        sources = [
+            Source((X, Y), I)
+            for (X, Y, I) in chunk_list(var_list, 3)
+        ]
+
+        resp = P(sources, uncertain=False).astype(np.float64)
+
+        print('{}: {}'.format(eid, resp))
         return {'fns': resp, 'failure': 0}
 
     except:

@@ -30,3 +30,7 @@ def dream2HDF5(basename, outname, names, pth='./'):
         gelman_name = os.path.join(pth, basename + "_gr.txt")
         gelman_data = np.loadtxt(gelman_name, skiprows=1, dtype=gelheader)
         hf.create_dataset('gelman_rubin', data=gelman_data)
+
+def chunk_list(l, n):
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
