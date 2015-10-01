@@ -1,4 +1,4 @@
-#!/home/jmhite/.conda/envs/slocal/bin/python
+#!/usr/bin/env python2
 
 from gefry2.util import dream2HDF5
 import click
@@ -13,7 +13,7 @@ def main(prefix, output, labels):
         prefix: Base name for ouptut files, usually the same as input deck name, e.g. <prefix>_chain#.txt
 
         output: Name for output file. Recommend .h5.
-        
+
         labels: [List] of column labels for the output.
     """
     l = map(str, labels) # NumPy doesn't like unicode labels
