@@ -1,0 +1,6 @@
+#!/bin/bash
+
+NLINES=500
+
+N=$(tail -n${NLINES} $1 | grep "Begin Evaluation" | awk 'END {print $3}')
+echo "Evaluation: ${N}"

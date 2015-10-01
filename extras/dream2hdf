@@ -1,0 +1,23 @@
+#!/home/jmhite/.conda/envs/slocal/bin/python
+
+from gefry2.util import dream2HDF5
+import click
+
+@click.command()
+@click.argument("prefix")
+@click.argument("output")
+@click.argument("labels", nargs=-1)
+def main(prefix, output, labels):
+    """Read a DREAM sampling output.
+
+        prefix: Base name for ouptut files, usually the same as input deck name, e.g. <prefix>_chain#.txt
+
+        output: Name for output file. Recommend .h5.
+        
+        labels: [List] of column labels for the output.
+    """
+    l = map(str, labels) # NumPy doesn't like unicode labels
+    dream2HDF5(prefix, output, l)
+
+if __name__ == '__main__':
+    main()
