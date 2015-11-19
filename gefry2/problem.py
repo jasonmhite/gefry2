@@ -29,6 +29,7 @@ class Domain(object):
             if not inter.is_empty:
                 path[i] = inter.length
 
+        # TODO insert buildup correction here
         return exp(-(path * self.sigmas).sum()) # alpha
 
 ## Replace these with namedtuples?
