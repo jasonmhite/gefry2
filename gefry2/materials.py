@@ -46,6 +46,10 @@ class BuildupModelBase(object):
         return NotImplemented
 
 class HarimaModel(BuildupModelBase):
+    __doc__ = """The model for gamma buildup due to Y. Harima,
+    'An Approximation of Gamma-Ray Buildup Factors by Modified
+    Geometrical Progression, NSE 1982.'"""
+
     def __call__(self, m, x, e0):
         b, c, a, xk, d = self.materials[m][e0]
 
