@@ -7,17 +7,25 @@ from collections import Iterable
 __all__ = ['Domain', 'Detector', 'Source', 'Problem']
 
 class Domain(object):
-    def __init__(self, geometry, sigmas):
+    def __init__(self, geometry, sigmas, materials=None):
+        # Lazy checks
         assert len(geometry) == len(sigmas)
+        if materials is not None:
+            assert len(geometry) == len(materials)
+
         self.geometry = geometry
         self.sigmas = array(sigmas)
+        self.materials = materials
         self.NObj = len(self.geometry)
 
         self.all_obj = cascaded_union(geometry)
 
         self.dom = g.box(*self.all_obj.bounds)
 
-    def __call__(self, a, b):
+    def __call__(self, a, b, pL=False):
+        # pL is whether or not to return path lengths
+        # for buildup calculations
+
         # Simple linear search over the objects
         L = g.LineString([a, b])
 
@@ -29,8 +37,13 @@ class Domain(object):
             if not inter.is_empty:
                 path[i] = inter.length
 
-        # TODO insert buildup correction here
-        return exp(-(path * self.sigmas).sum()) # alpha
+        alpha = exp(-(path * self.sigmas).sum()) # alpha
+
+        if pL:
+            # second value is in MFPs
+            return (alpha, path * self.sigmas)
+        else:
+            return alpha
 
 ## Replace these with namedtuples?
 
@@ -42,15 +55,20 @@ class Detector(object):
         self.A = A
 
 class Source(object):
-    def __init__(self, loc, intensity):
+    def __init__(self, loc, intensity, e0=None):
         self.loc = array(loc)
         self.intensity = intensity
+        self.e0 = e0
 
 class Problem(object):
-    def __init__(self, domain, detectors, source, background):
+    def __init__(self, domain, detectors, source, background, buildup_model=None):
         self.domain = domain
         self.detectors = detectors
         self.background = background
+        self.buildup_model = buildup_model
+
+        if self.buildup_model is not None:
+            assert self.domain.materials is not None
 
         # Can pass either one or many sources
         if isinstance(source, Iterable):
@@ -80,6 +98,7 @@ class Problem(object):
     def __call__(self, src_hyp=None, uncertain=True):
         # Note: this allows for computing the response with a different
         # number of sources than actual
+
         if src_hyp is None: # Computing reference values
             sources = self.source
         else:
@@ -89,6 +108,9 @@ class Problem(object):
             else:
                 assert isinstance(src_hyp, Source)
                 sources = [src_hyp]
+
+        if self.buildup_model is not None:
+            assert all(map(lambda s: s.e0 is not None, sources))
 
         I = zeros(self._nd)
 
@@ -105,7 +127,24 @@ class Problem(object):
             alpha = empty(self._nd)
 
             for (i, r_i) in enumerate(self.r_d):
-                alpha[i] = self.domain(source.loc, r_i)
+                if self.buildup_model is not None:
+                    # Buildup correction goes here
+                    alpha[i], path = self.domain(source.loc, r_i, pL=True)
+                    # Now have the path lengths for each, need to calculate the
+                    # buildups
+                    B = 1.0
+
+                    for j, p in enumerate(path):
+                        if p != 0.0: # Shapely returns None for empty intersection
+                            B *= self.buildup_model(
+                                self.domain.materials[j],
+                                p,
+                                source.e0,
+                            )
+
+                    alpha[i] *= B
+                else:
+                    alpha[i] = self.domain(source.loc, r_i)
 
             # Mean detector count rate
             Ip = self.I0[s_i] * alpha * omega

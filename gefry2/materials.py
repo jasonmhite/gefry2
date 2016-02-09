@@ -27,6 +27,8 @@ class BuildupParameterTable(object):
     def __repr__(self): # Return the underlying dataframe's repr
         return self._data.__repr__()
 
+# Need to adjust this a bit to fit better with the calling convention over in
+# problem.py
 class BuildupModelBase(object):
     __metaclass__ = abc.ABCMeta
 
@@ -51,6 +53,7 @@ class HarimaModel(BuildupModelBase):
     Geometrical Progression, NSE 1982.'"""
 
     def __call__(self, m, x, e0):
+        # Make this return a closure or something like that
         b, c, a, xk, d = self.materials[m][e0]
 
         if x <= xk:

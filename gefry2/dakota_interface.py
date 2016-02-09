@@ -14,6 +14,12 @@ except KeyError:
 with open(PSPEC) as f:
     P, _, _ = pickle.load(f)
 
+#Monkey patch the problem for compatibility
+if not hasattr(P, "buildup_model"):
+    P.buildup_model = None
+if not hasattr(P, "_nd"):
+    P._nd = len(P.detectors)
+
 def respFn(**kwargs):
     try:
         n_var = kwargs['variables']
@@ -29,7 +35,8 @@ def respFn(**kwargs):
 
         return {'fns': resp, 'failure': 0}
 
-    except:
+    except Exception as e:
+        print(e)
         return {'fns': np.zeros(n_resp), 'failure': 1}
 
 def respFnN(**kwargs):
