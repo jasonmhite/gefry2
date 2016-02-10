@@ -4,6 +4,8 @@ import glob
 import h5py
 import re
 
+from gefry2 import Problem
+
 def dream2HDF5(basename, outname, names, pth='./'):
     chainnum = re.compile(r'{}_chain(\d+).txt'.format(basename))
 
@@ -34,3 +36,5 @@ def dream2HDF5(basename, outname, names, pth='./'):
 def chunk_list(l, n):
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
+
+

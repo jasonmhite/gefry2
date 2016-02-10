@@ -1,6 +1,7 @@
 from numpy import *
 from shapely.ops import cascaded_union
 from shapely import geometry as g
+from gefry2 import background_terms
 
 from collections import Iterable
 
@@ -47,10 +48,24 @@ class Source(object):
         self.intensity = intensity
 
 class Problem(object):
+    @classmethod
+    def upgrade_problem(cls, old_problem, domain=None, detectors=None, source=None, background=None):
+        # Upgrade an existing problem object to the new internals
+        return cls(
+            domain if domain is not None else old_problem.domain,
+            detectors if detectors is not None else old_problem.detectors,
+            source if source is not None else old_problem.source,
+            background if background is not None else old_problem.background,
+        )
+
     def __init__(self, domain, detectors, source, background):
         self.domain = domain
         self.detectors = detectors
-        self.background = background
+        if isinstance(background, background_terms.BackgroundTermBase):
+            self.background = background
+        else:
+            # Is a scalar
+            self.background = background_terms.ConstantPoissonBackground(background)
 
         # Can pass either one or many sources
         if isinstance(source, Iterable):
@@ -74,10 +89,12 @@ class Problem(object):
             for i in self.source
         ]
 
+        self._expected_background = around([self.background(d).mean() for d in self.detectors])
+
         # Compute reference response
         self.nominal = self(uncertain=False)
 
-    def __call__(self, src_hyp=None, uncertain=True):
+    def __call__(self, src_hyp=None, uncertain=True, background=True):
         # Note: this allows for computing the response with a different
         # number of sources than actual
         if src_hyp is None: # Computing reference values
@@ -111,8 +128,15 @@ class Problem(object):
             Ip = self.I0[s_i] * alpha * omega
 
             if uncertain:
-                I += random.poisson(Ip) + random.poisson(self.background)
+                I += random.poisson(Ip)
             else:
-                I += rint(Ip).astype(int64) + self.background
+                I += rint(Ip).astype(int64)
+
+
+            if background and uncertain:
+                v = around(array([self.background(d).rvs() for d in self.detectors]))
+                I += v
+            elif background and not uncertain:
+                I += self._expected_background
 
         return I
