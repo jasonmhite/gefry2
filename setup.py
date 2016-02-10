@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="gefry",
-    version="0.0.2",
+    version="0.1.1",
     author="Jason M. Hite",
     license="BSD",
     packages=["gefry2"],
